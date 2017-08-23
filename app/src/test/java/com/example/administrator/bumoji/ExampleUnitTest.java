@@ -1,5 +1,8 @@
 package com.example.administrator.bumoji;
 
+import com.example.administrator.bumoji.Tools.GaodeApiTool;
+import com.example.administrator.bumoji.Tools.Weather;
+
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -12,6 +15,7 @@ import static org.junit.Assert.*;
 public class ExampleUnitTest {
     @Test
     public void addition_isCorrect() throws Exception {
-        assertEquals(4, 2 + 2);
+        Weather weather=GaodeApiTool.getWeather("沈阳");
+        System.out.print("");
     }
 }

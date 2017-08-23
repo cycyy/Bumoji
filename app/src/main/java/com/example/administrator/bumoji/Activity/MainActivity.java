@@ -1,7 +1,11 @@
 package com.example.administrator.bumoji.Activity;
 
+import android.content.Context;
+import android.content.Intent;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.FragmentStatePagerAdapter;
+import android.support.v4.view.PagerAdapter;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 
@@ -16,9 +20,32 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 
+import android.widget.ImageButton;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.example.administrator.bumoji.Fragment.MakeFragment;
 import com.example.administrator.bumoji.R;
+import com.example.administrator.bumoji.Tools.GaodeApiTool;
+import com.example.administrator.bumoji.Tools.GsonUtil;
+import com.example.administrator.bumoji.Tools.Httptool;
+import com.example.administrator.bumoji.Tools.NowWeather;
+import com.example.administrator.bumoji.Tools.PreferencesUtil;
+import com.example.administrator.bumoji.Tools.Weather;
+import com.google.gson.Gson;
+
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.Response;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -31,37 +58,146 @@ public class MainActivity extends AppCompatActivity {
      * {@link android.support.v4.app.FragmentStatePagerAdapter}.
      */
     private SectionsPagerAdapter mSectionsPagerAdapter;
-
     /**
      * The {@link ViewPager} that will host the section contents.
      */
     private ViewPager mViewPager;
+    private TextView city_TextView;
+    private ImageButton chooseCity_ImageButton;
+    public Weather weather;
+    public NowWeather nowWeather;
+    public  List<String> list;
+    public Map<String,Weather> weatherMap;
+    public Map<String,NowWeather> nowWeatherMap;
+    public int num=0;
+    public int position;
+    public PreferencesUtil preferencesUtil;
+    public Set set;
+    private boolean flage;
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        flage=false;
+        weatherMap=new HashMap<>();
+        nowWeatherMap=new HashMap<>();
+        list = new ArrayList();
 
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-        // Create the adapter that will return a fragment for each of the three
-        // primary sections of the activity.
+       inithttp();
+        chooseCity_ImageButton = (ImageButton) findViewById(R.id.chooseCity_ImageButton);
+        chooseCity_ImageButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+//                inithttp();
+                flage=true;
+                Intent intent = new Intent();
+                intent.putExtra("list", (Serializable) list);
+                intent.putExtra("nowWeatherMap", (Serializable) nowWeatherMap);
+                intent.setClass(MainActivity.this, ChooseCity_Activity.class);
+                startActivity(intent);
+            }
+        });
+    }
+
+    @Override
+    protected void onResume() {
+        if (flage) {
+            list.clear();
+            nowWeatherMap.clear();
+            weatherMap.clear();
+            num = 0;
+            list.addAll(preferencesUtil.getPreferences());
+            mSectionsPagerAdapter.notifyDataSetChanged();
+            doHttp();
+            position=list.indexOf(preferencesUtil.getchoose());
+
+        }
+        super.onResume();
+    }
+    public void inithttp() {
+        Context context = getApplicationContext();
+        set = new HashSet();
+        set.add("110000");
+        set.add("210100");
+
+        preferencesUtil = new PreferencesUtil(context);
+
+        preferencesUtil.save(set);
+        set = preferencesUtil.getPreferences();
+        list.addAll(set);
+        doHttp();
+    }
+
+
+    public void doHttp() {
+            final Httptool httptool = new Httptool();
+            for (int i = 0; i < list.size(); i++) {
+                final int finalI = i;
+                httptool.getHttp(GaodeApiTool.getNowWeather(list.get(i)), new Callback() {
+                    @Override
+                    public void onFailure(Call call, IOException e) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(getApplicationContext(), "请求失败", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
+                    @Override
+                    public void onResponse(final Call call, Response response) throws IOException {
+                        if (null != response.cacheResponse()) {
+                            String str = response.cacheResponse().toString();
+                        } else {
+                            String string = response.body().string();
+                            System.out.println(string);
+                            nowWeatherMap.put(list.get(finalI), GsonUtil.parseJsonWithGson(string, NowWeather.class));
+                            httptool.getHttp(GaodeApiTool.getWeather(list.get(finalI)), new Callback() {
+                                @Override
+                                public void onFailure(Call call, IOException e) {
+                                    runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            Toast.makeText(getApplicationContext(), "请求失败", Toast.LENGTH_SHORT).show();
+                                        }
+                                    });
+                                }
+
+                                @Override
+                                public void onResponse(Call call, Response response) throws IOException {
+                                    weatherMap.put(list.get(finalI), GsonUtil.parseJsonWithGson(response.body().string(), Weather.class));
+                                    runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            ifSuccess();
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+        }
+
+
+    public synchronized void ifSuccess(){
+        num++;
+        if(num==list.size()){
+             createViewPager();
+            if (flage) {
+                   mViewPager.setCurrentItem(position);
+            }
+        }
+    }
+
+    public void createViewPager() {
         mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
-
         // Set up the ViewPager with the sections adapter.
         mViewPager = (ViewPager) findViewById(R.id.container);
         mViewPager.setAdapter(mSectionsPagerAdapter);
-
-
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
-
     }
 
 
@@ -87,44 +223,23 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+//    @Override
+//    public void run() {
+//        weather= GaodeApiTool.getWeather("沈阳");
+//    }
+
     /**
      * A placeholder fragment containing a simple view.
      */
-    public static class PlaceholderFragment extends Fragment {
-        /**
-         * The fragment argument representing the section number for this
-         * fragment.
-         */
-        private static final String ARG_SECTION_NUMBER = "section_number";
 
-        public PlaceholderFragment() {
-        }
 
-        /**
-         * Returns a new instance of this fragment for the given section
-         * number.
-         */
-        public static PlaceholderFragment newInstance(int sectionNumber) {
-            PlaceholderFragment fragment = new PlaceholderFragment();
-            Bundle args = new Bundle();
-            args.putInt(ARG_SECTION_NUMBER, sectionNumber);
-            fragment.setArguments(args);
-            return fragment;
-        }
 
-        @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                                 Bundle savedInstanceState) {
-            View rootView = inflater.inflate(R.layout.fragment_main, container, false);
-            return rootView;
-        }
-    }
 
     /**
      * A {@link FragmentPagerAdapter} that returns a fragment corresponding to
      * one of the sections/tabs/pages.
      */
-    public class SectionsPagerAdapter extends FragmentPagerAdapter {
+    public class SectionsPagerAdapter extends FragmentStatePagerAdapter{
 
         public SectionsPagerAdapter(FragmentManager fm) {
             super(fm);
@@ -134,25 +249,23 @@ public class MainActivity extends AppCompatActivity {
         public Fragment getItem(int position) {
             // getItem is called to instantiate the fragment for the given page.
             // Return a PlaceholderFragment (defined as a static inner class below).
-            return PlaceholderFragment.newInstance(position + 1);
+
+            return MakeFragment.newInstance(position + 1,weatherMap.get(list.get(position)),nowWeatherMap.get(list.get(position)));
+        }
+
+        @Override
+        public int getItemPosition(Object object) {
+            return PagerAdapter.POSITION_NONE;
         }
 
         @Override
         public int getCount() {
-            // Show 3 total pages.
-            return 3;
+            return list.size();
         }
 
         @Override
         public CharSequence getPageTitle(int position) {
-            switch (position) {
-                case 0:
-                    return "SECTION 1";
-                case 1:
-                    return "SECTION 2";
-                case 2:
-                    return "SECTION 3";
-            }
+
             return null;
         }
     }

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#3e3e3e">
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+
+    >
+    <com.baoyz.swipemenulistview.SwipeMenuListView
+        android:id="@+id/choosecity_ListView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        >
+    </com.baoyz.swipemenulistview.SwipeMenuListView>
+</LinearLayout>
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="right">
+    <ImageButton
+        android:id="@+id/addCity_ImageButton"
+        android:layout_width="35dp"
+        android:layout_height="35dp"
+        android:layout_marginRight="20dp"
+        android:layout_marginBottom="10dp"
+        android:layout_marginTop="10dp"
+        android:scaleType="fitXY"
+        android:background="@mipmap/add_button"/>
+</LinearLayout>
+
+
+
+
+</LinearLayout>
